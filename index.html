@@ -1,0 +1,226 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Heart with Photo, Glow Text & Fireworks</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: linear-gradient(135deg, #ffb6c1, #ff69b4);
+      overflow: hidden;
+    }
+
+    canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+}
+
+    /* ❤️ Ảnh lồng trong trái tim */
+    .heart-photo {
+      position: absolute;
+      top: 47%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px;
+      height: 260px;
+      object-fit: cover;
+      mask-image: radial-gradient(circle 180px at center, white 99%, transparent 100%);
+      -webkit-mask-image: radial-gradient(circle 180px at center, white 99%, transparent 100%);
+      clip-path: path("M 240 80 C 240 20 180 0 140 40 C 100 0 40 20 40 80 C 40 140 140 220 140 220 C 140 220 240 140 240 80 Z");
+      box-shadow: 0 0 25px #ff66cc;
+      animation: pulse 2.5s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.05); }
+    }
+
+    /* ✨ Dòng chữ phát sáng */
+    .glow-text {
+      position: absolute;
+      top: 80%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: "Comic Sans MS", cursive, sans-serif;
+      font-size: 28px;
+      color: #ffb6c1;
+      text-align: center;
+      text-shadow: 0 0 10px #ff66cc, 0 0 20px #ff99cc, 0 0 30px #ffb6c1;
+      animation: glow 2s ease-in-out infinite alternate;
+      white-space: pre-wrap;
+      width: 90%;
+    }
+
+    @keyframes glow {
+      from { opacity: 0.8; text-shadow: 0 0 10px #ff66cc, 0 0 20px #ff99cc, 0 0 30px #ffb6c1; }
+      to { opacity: 1; text-shadow: 0 0 25px #ff99cc, 0 0 40px #ff66cc, 0 0 50px #ffb6c1; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pinkboard"></canvas>
+  <img src="picture.jpg" alt="heart photo" class="heart-photo">
+  <div class="glow-text">
+    ❤️❤️ Love you my baby, wish you filled with joy this 20/10 ❤️❤️
+  </div>
+
+  <script>
+    var settings = {
+      particles: {
+        length: 500,
+        duration: 2,
+        velocity: 100,
+        effect: -0.75,
+        size: 30,
+      },
+    };
+
+    // ❤️ Hỗ trợ requestAnimationFrame
+    (function(){
+      var b=0, c=["ms","moz","webkit","o"];
+      for(var a=0;a<c.length&&!window.requestAnimationFrame;++a){
+        window.requestAnimationFrame=window[c[a]+"RequestAnimationFrame"];
+        window.cancelAnimationFrame=window[c[a]+"CancelAnimationFrame"]||window[c[a]+"CancelRequestAnimationFrame"];
+      }
+      if(!window.requestAnimationFrame){
+        window.requestAnimationFrame=function(h,e){
+          var d=new Date().getTime();
+          var f=Math.max(0,16-(d-b));
+          var g=window.setTimeout(function(){h(d+f)},f);
+          b=d+f;
+          return g;
+        }
+      }
+      if(!window.cancelAnimationFrame){
+        window.cancelAnimationFrame=function(d){clearTimeout(d)}
+      }
+    })();
+
+    var Point=function(x,y){this.x=x||0;this.y=y||0};
+    Point.prototype.clone=function(){return new Point(this.x,this.y)};
+    Point.prototype.length=function(l){if(l===undefined)return Math.sqrt(this.x*this.x+this.y*this.y);this.normalize();this.x*=l;this.y*=l;return this};
+    Point.prototype.normalize=function(){var l=this.length();this.x/=l;this.y/=l;return this};
+
+    // Particle trái tim
+    var Particle=function(){this.position=new Point();this.velocity=new Point();this.acceleration=new Point();this.age=0};
+    Particle.prototype.initialize=function(x,y,dx,dy){this.position.x=x;this.position.y=y;this.velocity.x=dx;this.velocity.y=dy;this.acceleration.x=dx*settings.particles.effect;this.acceleration.y=dy*settings.particles.effect;this.age=0};
+    Particle.prototype.update=function(dt){this.position.x+=this.velocity.x*dt;this.position.y+=this.velocity.y*dt;this.velocity.x+=this.acceleration.x*dt;this.velocity.y+=this.acceleration.y*dt;this.age+=dt};
+    Particle.prototype.draw=function(ctx,img){function ease(t){return (--t)*t*t+1;}var size=img.width*ease(this.age/settings.particles.duration);ctx.globalAlpha=1-this.age/settings.particles.duration;ctx.drawImage(img,this.position.x-size/2,this.position.y-size/2,size,size)};
+    var ParticlePool=function(length){
+      var particles=new Array(length);
+      for(var i=0;i<particles.length;i++)particles[i]=new Particle();
+      var firstActive=0,firstFree=0,duration=settings.particles.duration;
+      this.add=function(x,y,dx,dy){particles[firstFree].initialize(x,y,dx,dy);firstFree++;if(firstFree==particles.length)firstFree=0;if(firstActive==firstFree)firstActive++;if(firstActive==particles.length)firstActive=0};
+      this.update=function(dt){if(firstActive<firstFree){for(i=firstActive;i<firstFree;i++)particles[i].update(dt)}if(firstFree<firstActive){for(i=firstActive;i<particles.length;i++)particles[i].update(dt);for(i=0;i<firstFree;i++)particles[i].update(dt)}while(particles[firstActive].age>=duration&&firstActive!=firstFree){firstActive++;if(firstActive==particles.length)firstActive=0}};
+      this.draw=function(ctx,img){if(firstActive<firstFree){for(i=firstActive;i<firstFree;i++)particles[i].draw(ctx,img)}if(firstFree<firstActive){for(i=firstActive;i<particles.length;i++)particles[i].draw(ctx,img);for(i=0;i<firstFree;i++)particles[i].draw(ctx,img)}}};
+
+    (function(canvas){
+      var context=canvas.getContext('2d'),
+          particles=new ParticlePool(settings.particles.length),
+          particleRate=settings.particles.length/settings.particles.duration,
+          time;
+
+      function pointOnHeart(t){
+        return new Point(
+          160*Math.pow(Math.sin(t),3),
+          130*Math.cos(t)-50*Math.cos(2*t)-20*Math.cos(3*t)-10*Math.cos(4*t)+25
+        );
+      }
+
+      var image=(function(){
+        var canvas=document.createElement('canvas'),
+            ctx=canvas.getContext('2d');
+        canvas.width=settings.particles.size;
+        canvas.height=settings.particles.size;
+        function to(t){var p=pointOnHeart(t);
+          p.x=settings.particles.size/2+p.x*settings.particles.size/300;
+          p.y=settings.particles.size/2-p.y*settings.particles.size/300;
+          return p;}
+        ctx.beginPath();
+        var t=-Math.PI,p=to(t);ctx.moveTo(p.x,p.y);
+        while(t<Math.PI){t+=0.01;p=to(t);ctx.lineTo(p.x,p.y);}
+        ctx.closePath();
+        ctx.fillStyle='#ea80b0';ctx.fill();
+        var img=new Image();img.src=canvas.toDataURL();return img;
+      })();
+
+      // 💥 Pháo hoa
+      var fireworks = [];
+      function createFirework(){
+        var x = canvas.width/2 + (Math.random()-0.5)*400; // xung quanh trái tim
+        var y = canvas.height/2 + (Math.random()-0.5)*200;
+        var colors = ['#ff66cc','#ffcc66','#66ffcc','#66ccff','#ff6699'];
+        var firework = {x:x, y:y, particles:[], color: colors[Math.floor(Math.random()*colors.length)]};
+        for(var i=0;i<20;i++){
+          var angle = Math.random()*2*Math.PI;
+          var speed = Math.random()*100+50;
+          firework.particles.push({x:x, y:y, dx:Math.cos(angle)*speed, dy:Math.sin(angle)*speed, alpha:1});
+        }
+        fireworks.push(firework);
+      }
+
+      function updateFireworks(dt){
+        for(var i=fireworks.length-1;i>=0;i--){
+          var f = fireworks[i];
+          var alive = false;
+          for(var j=0;j<f.particles.length;j++){
+            var p = f.particles[j];
+            p.x += p.dx*dt;
+            p.y += p.dy*dt;
+            p.dy += 100*dt; // gravity
+            p.alpha -= dt;
+            if(p.alpha>0) alive = true;
+          }
+          if(!alive) fireworks.splice(i,1);
+        }
+      }
+
+      function drawFireworks(ctx){
+        fireworks.forEach(f=>{
+          f.particles.forEach(p=>{
+            if(p.alpha>0){
+              ctx.globalAlpha = p.alpha;
+              ctx.fillStyle = f.color;
+              ctx.beginPath();
+              ctx.arc(p.x,p.y,2,0,Math.PI*2);
+              ctx.fill();
+            }
+          });
+        });
+        ctx.globalAlpha=1;
+      }
+
+      function render(){
+        requestAnimationFrame(render);
+        var newTime=new Date().getTime()/1000,
+            deltaTime=newTime-(time||newTime);
+        time=newTime;
+        context.clearRect(0,0,canvas.width,canvas.height);
+
+        // Particle trái tim
+        var amount=particleRate*deltaTime;
+        for(var i=0;i<amount;i++){
+          var pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
+          var dir=pos.clone().length(settings.particles.velocity);
+          particles.add(canvas.width/2+pos.x,canvas.height/2-pos.y,dir.x,-dir.y);
+        }
+        particles.update(deltaTime);
+        particles.draw(context,image);
+
+        // Pháo hoa
+        if(Math.random()<1) createFirework(); // tạo ngẫu nhiên
+        updateFireworks(deltaTime);
+        drawFireworks(context);
+      }
+
+      function onResize(){canvas.width=canvas.clientWidth;canvas.height=canvas.clientHeight;}
+      window.onresize=onResize;
+      setTimeout(function(){onResize();render();},10);
+    })(document.getElementById('pinkboard'));
+  </script>
+</body>
+</html>
